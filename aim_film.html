@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>From two models to one — adaptive gradient intervention on a pretrained molecular transformer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --plate:#0F1322; --deep:#080B16; --lift:#1A2038;
+  --ink:#EAEDF7; --muted:#8B96B8; --faint:#59648A;
+  --line:rgba(234,237,247,.13); --hair:rgba(234,237,247,.06);
+  --mu:#5FD0F5;      /* dipole moment */
+  --lumo:#B48CFF;    /* LUMO energy */
+  --good:#5FE0A8; --bad:#FF6F61; --amber:#F5A93F;
+  --mono:'Spline Sans Mono','SF Mono',ui-monospace,monospace;
+  --disp:'Bricolage Grotesque','Archivo',system-ui,sans-serif;
+  --body:'Spline Sans','Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--deep);color:var(--ink);font-family:var(--body);overflow:hidden;-webkit-font-smoothing:antialiased}
+
+.film{height:100dvh;display:grid;grid-template-rows:auto 1fr auto auto;background:var(--plate)}
+
+/* header */
+.hdr{display:flex;align-items:center;gap:14px;padding:13px 26px;border-bottom:1px solid var(--hair)}
+.hdr .id{font-family:var(--mono);font-size:10.5px;letter-spacing:.17em;text-transform:uppercase;color:var(--faint)}
+.hdr .id b{color:var(--ink);font-weight:500}
+.hdr .sp{flex:1}
+.btn{background:none;border:1px solid var(--line);color:var(--muted);font-family:var(--mono);font-size:10.5px;
+  letter-spacing:.12em;text-transform:uppercase;padding:7px 12px;border-radius:2px;cursor:pointer;transition:.18s}
+.btn:hover{color:var(--ink);border-color:rgba(234,237,247,.35)}
+.btn:focus-visible{outline:2px solid var(--mu);outline-offset:2px}
+.btn.on{background:var(--ink);color:var(--deep);border-color:var(--ink)}
+
+/* stage */
+.stage{position:relative;display:flex;align-items:center;justify-content:center;padding:10px 26px;min-height:0}
+#canvas{width:100%;height:100%;max-width:1180px}
+#canvas text{font-family:var(--mono)}
+
+/* caption */
+.cap{padding:0 26px 6px;min-height:64px;display:flex;align-items:center;justify-content:center}
+.cap p{
+  margin:0;max-width:1000px;text-align:center;font-size:clamp(14px,1.5vw,19px);line-height:1.45;
+  color:#D6DCF0;transition:opacity .35s ease;
+}
+.cap p b{color:var(--ink);font-weight:600}
+.cap p .hl-mu{color:var(--mu)} .cap p .hl-lu{color:var(--lumo)}
+.cap p .hl-bad{color:var(--bad)} .cap p .hl-good{color:var(--good)}
+
+/* transport */
+.transport{padding:10px 26px 16px;border-top:1px solid var(--hair)}
+.chapters{display:flex;gap:3px;margin-bottom:9px}
+.chap{flex:var(--f,1);cursor:pointer;background:none;border:0;padding:0;text-align:left}
+.chap .tr{height:4px;background:rgba(234,237,247,.10);border-radius:1px;overflow:hidden}
+.chap .fl{height:100%;width:0;background:var(--mu);border-radius:1px}
+.chap .nm{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--faint);margin-top:6px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chap.now .nm{color:var(--ink)}
+.chap:focus-visible{outline:2px solid var(--mu);outline-offset:3px}
+.tbar{display:flex;align-items:center;gap:14px}
+.tbtn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--ink);
+  cursor:pointer;font-size:13px;display:grid;place-items:center;transition:.18s;flex:none}
+.tbtn:hover{background:var(--lift)}
+.tbtn:focus-visible{outline:2px solid var(--mu);outline-offset:2px}
+#scrub{flex:1;-webkit-appearance:none;appearance:none;height:3px;background:rgba(234,237,247,.14);border-radius:2px;outline:none}
+#scrub::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--ink);cursor:pointer}
+#scrub::-moz-range-thumb{width:13px;height:13px;border:0;border-radius:50%;background:var(--ink);cursor:pointer}
+#scrub:focus-visible{outline:2px solid var(--mu);outline-offset:4px}
+.tc{font-family:var(--mono);font-size:11px;color:var(--faint);min-width:88px;text-align:right}
+
+/* script sheet */
+.sheet{position:fixed;inset:0;z-index:40;background:rgba(8,11,22,.97);padding:36px 6vw;overflow:auto;
+  transform:translateY(101%);transition:transform .34s cubic-bezier(.2,.8,.2,1)}
+.sheet.open{transform:none}
+.sheet h2{font-family:var(--disp);font-size:26px;font-weight:800;letter-spacing:-.02em;margin:0 0 6px}
+.sheet .sub{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;margin-bottom:24px}
+.sline{display:grid;grid-template-columns:64px 1fr;gap:16px;padding:9px 0;border-bottom:1px solid var(--hair);cursor:pointer}
+.sline:hover{background:rgba(234,237,247,.03)}
+.sline .t{font-family:var(--mono);font-size:11px;color:var(--mu);padding-top:3px}
+.sline .x{font-size:15px;line-height:1.55;color:#CBD3EC}
+.sheet .close{position:sticky;top:0;float:right}
+
+@media (max-width:820px){
+  body{overflow:auto}
+  .film{height:auto;min-height:100dvh}
+  .stage{min-height:44dvh}
+  .hdr .id{display:none}
+  .cap p{font-size:14px}
+}
+@media (prefers-reduced-motion:reduce){.cap p{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="film">
+  <header class="hdr">
+    <span class="id"><b>Nisha Suthar</b> &nbsp;·&nbsp; Adaptive gradient intervention on a 3D equivariant transformer &nbsp;·&nbsp; QM9</span>
+    <span class="sp"></span>
+    <button class="btn" id="scriptBtn">Script</button>
+    <button class="btn" id="fsBtn">Present</button>
+  </header>
+
+  <div class="stage"><svg id="canvas" viewBox="0 0 1000 560" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Animated explanation of multi-task gradient conflict"></svg></div>
+
+  <div class="cap"><p id="caption"></p></div>
+
+  <div class="transport">
+    <div class="chapters" id="chapters"></div>
+    <div class="tbar">
+      <button class="tbtn" id="playBtn" aria-label="Play or pause">▶</button>
+      <button class="tbtn" id="backBtn" aria-label="Restart">↺</button>
+      <input type="range" id="scrub" min="0" max="172" step="0.05" value="0" aria-label="Timeline">
+      <span class="tc" id="tc">0:00 / 2:52</span>
+    </div>
+  </div>
+</div>
+
+<aside class="sheet" id="sheet">
+  <button class="btn close" id="closeSheet">Close</button>
+  <h2>Narration</h2>
+  <div class="sub">Click any line to jump there</div>
+  <div id="sheetBody"></div>
+</aside>
+
+<script>
+(function(){
+"use strict";
+const NS="http://www.w3.org/2000/svg";
+const svg=document.getElementById("canvas");
+const C={mu:"#5FD0F5",lumo:"#B48CFF",good:"#5FE0A8",bad:"#FF6F61",amber:"#F5A93F",
+         ink:"#EAEDF7",muted:"#8B96B8",faint:"#59648A",lift:"#1A2038",deep:"#080B16"};
+const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function E(tag,a,p){const n=document.createElementNS(NS,tag);
+  for(const k in a){if(k==="text")n.textContent=a[k];else n.setAttribute(k,a[k]);}
+  (p||svg).appendChild(n);return n;}
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,u)=>a+(b-a)*u;
+const ease=u=>u<.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2;
+const easeOut=u=>1-Math.pow(1-u,3);
+/** eased 0→1 ramp between times a and b */
+const ramp=(t,a,b)=>easeOut(clamp((t-a)/(b-a),0,1));
+function vis(g,o){g.setAttribute("opacity",o.toFixed(3));g.style.display=o<0.004?"none":"";}
+
+/* ═══ TIMELINE ═══════════════════════════════════════════ */
+const DUR=172;
+const CH=[
+  {n:"Two properties",t0:0,t1:25},
+  {n:"One model each",t0:25,t1:68},
+  {n:"Share the trunk",t0:68,t1:92},
+  {n:"Gradient conflict",t0:92,t1:116},
+  {n:"AIM",t0:116,t1:140},
+  {n:"Pretrained backbone",t0:140,t1:158},
+  {n:"What I found",t0:158,t1:172}
+];
+const CAPS=[
+ [0.4,'Predicting quantum-chemical properties with neural networks — and what happens when one network has to learn <b>two of them at once</b>.'],
+ [4.5,'Two targets from the QM9 dataset.'],
+ [9.5,'<span class="hl-mu">Dipole moment μ</span> — how charge separates across the molecule. It depends on geometry and polarity.'],
+ [15.5,'<span class="hl-lu">ε<sub>LUMO</sub></span> — the energy of the lowest unoccupied molecular orbital. Electronic structure, not shape.'],
+ [20.5,'Same molecule, same 3D coordinates. <b>Two very different questions.</b>'],
+ [25.5,'The safe approach: train <b>one model per property</b>.'],
+ [31,'Nothing interferes. Each encoder is free to shape its features for exactly one target.'],
+ [38,'But you pay for it twice — <span class="hl-bad">twice the training time, twice the parameters, twice the storage</span>.'],
+ [46.5,'And QM9 ships a dozen more properties. One model each does not scale.'],
+ [55,'So <b>share the encoder</b>. One backbone, one small head per property.'],
+ [61.5,'One training run, one set of weights, and features that can transfer between the two tasks.'],
+ [68.5,'But now both tasks push on the <b>same parameters</b>.'],
+ [74,'Every step, each task sends a gradient into the shared trunk.'],
+ [80,'When those two gradients point in opposing directions, their <b>cosine similarity goes negative</b>.'],
+ [86,'The shared update cancels itself out. The optimiser takes a weak compromise step.'],
+ [92.5,'That is <span class="hl-bad">gradient conflict</span> — and it surfaces as negative transfer: the shared model does worse than two separate ones.'],
+ [99,'<b>Linear scalarization</b> simply averages the two losses. Cheap, one backward pass, and <span class="hl-bad">no defence at all</span>.'],
+ [106,'<b>PCGrad</b> does surgery — project the conflicting component out of one gradient before summing.'],
+ [111,'But the rule is a <b>hard switch at zero</b>, applied identically to every pair of tasks. Nothing about it is learned.'],
+ [116.5,'<b>AIM</b> makes the threshold adaptive: a soft gate instead of a switch.'],
+ [122,'τ is a <b>trainable parameter</b>, updated on a held-out guidance split — so the data decides how suspicious to be.'],
+ [128,'AIM-Matrix learns one τ per ordered pair, so <span class="hl-mu">μ</span>→<span class="hl-lu">LUMO</span> can behave differently from <span class="hl-lu">LUMO</span>→<span class="hl-mu">μ</span>.'],
+ [134,'Intervene hard when the tasks genuinely fight. <span class="hl-good">Stay out of the way when they don\'t.</span>'],
+ [140.5,'One variable left: <b>what the shared backbone already knows</b>.'],
+ [146,'A GNN from scratch learns chemistry and task relations simultaneously — its features keep moving, so conflict stays high.'],
+ [152,'<b>Uni-Mol</b> is pretrained on 3D structure. I fine-tune only the last two blocks, so the shared features barely drift.'],
+ [158.5,'And that flips the answer.'],
+ [162,'With Uni-Mol, plain averaging wins by 16% — the tasks hardly fight, so intervention buys little.'],
+ [166.5,'With the GNN, sharing actively hurts, and <span class="hl-good">AIM-Matrix</span> is the only method that stays near the single-task baseline.'],
+ [170,'Gradient intervention is a fix for <b>unstable representations</b> — choose it together with your backbone, never separately.']
+];
+
+/* ═══ SHARED BUILDERS ════════════════════════════════════ */
+function molecule(p,x,y,s,dim){
+  const g=E("g",{transform:`translate(${x},${y}) scale(${s})`},p);
+  const bonds=[[-42,14,0,-12],[0,-12,42,14],[-42,14,-70,52],[42,14,70,52],[0,-12,0,-70]];
+  bonds.forEach(b=>E("line",{x1:b[0],y1:b[1],x2:b[2],y2:b[3],stroke:dim||C.muted,"stroke-width":2.2,"stroke-linecap":"round",opacity:.75},g));
+  const atoms=[[-42,14,13,C.mu],[42,14,13,C.mu],[0,-12,11,C.muted],[0,-70,14,C.amber],[-70,52,9,C.faint],[70,52,9,C.faint]];
+  atoms.forEach(a=>E("circle",{cx:a[0],cy:a[1],r:a[2],fill:C.lift,stroke:dim||a[3],"stroke-width":2.2},g));
+  return g;
+}
+function box(p,x,y,w,h,stroke,fill){
+  return E("rect",{x:x,y:y,width:w,height:h,rx:3,fill:fill||"rgba(26,32,56,.85)",stroke:stroke,"stroke-width":1.4},p);
+}
+function label(p,x,y,txt,fill,size,anchor,weight){
+  return E("text",{x:x,y:y,fill:fill||C.muted,"font-size":size||11,"text-anchor":anchor||"start",
+    "letter-spacing":".06em","font-weight":weight||400,text:txt},p);
+}
+E("defs",{},svg);
+const defs=svg.querySelector("defs");
+["mu","lumo","good","bad","ink","amber"].forEach(k=>{
+  const m=E("marker",{id:"ar-"+k,viewBox:"0 0 10 10",refX:8.5,refY:5,markerWidth:5.5,markerHeight:5.5,orient:"auto-start-reverse"},defs);
+  E("path",{d:"M0 0 L10 5 L0 10 z",fill:C[k]},m);
+});
+
+/* ═══ LAYER 1 — TWO PROPERTIES (0–25) ════════════════════ */
+const L1=E("g",{},svg);
+(function(){
+  const mol=molecule(L1,500,300,1.25);
+  const title=E("g",{},L1);
+  E("text",{x:500,y:92,fill:C.ink,"font-family":"Bricolage Grotesque, sans-serif","font-size":40,
+    "font-weight":800,"text-anchor":"middle","letter-spacing":"-.02em",text:"One molecule. Two properties."},title);
+  E("text",{x:500,y:124,fill:C.faint,"font-size":12,"text-anchor":"middle","letter-spacing":".18em",
+    text:"QM9  ·  3D COORDINATES IN, QUANTUM-CHEMICAL TARGETS OUT"},title);
+
+  // dipole tag (left)
+  const gMu=E("g",{},L1);
+  E("line",{x1:412,y1:325,x2:250,y2:400,stroke:C.mu,"stroke-width":1.2,opacity:.45},gMu);
+  box(gMu,96,396,190,64,"rgba(95,208,245,.5)");
+  label(gMu,116,422,"μ   DIPOLE MOMENT",C.mu,12,"start",500);
+  label(gMu,116,442,"charge separation · Debye",C.faint,10.5);
+  // δ+/δ− indicator on molecule
+  const dip=E("g",{},L1);
+  E("text",{x:432,y:250,fill:C.mu,"font-size":13,text:"δ−"},dip);
+  E("text",{x:560,y:372,fill:C.mu,"font-size":13,text:"δ+"},dip);
+  E("line",{x1:452,y1:262,x2:552,y2:356,stroke:C.mu,"stroke-width":2,"stroke-dasharray":"5 4",
+    "marker-end":"url(#ar-mu)",opacity:.85},dip);
+
+  // LUMO tag (right)
+  const gLu=E("g",{},L1);
+  E("line",{x1:588,y1:325,x2:750,y2:400,stroke:C.lumo,"stroke-width":1.2,opacity:.45},gLu);
+  box(gLu,714,396,196,64,"rgba(180,140,255,.5)");
+  label(gLu,734,422,"ε_LUMO   ORBITAL ENERGY",C.lumo,12,"start",500);
+  label(gLu,734,442,"electronic structure · eV",C.faint,10.5);
+  // orbital lobes
+  const orb=E("g",{},L1);
+  E("ellipse",{cx:452,cy:266,rx:46,ry:30,fill:"rgba(180,140,255,.16)",stroke:C.lumo,"stroke-width":1.3,
+    transform:"rotate(-28 452 266)"},orb);
+  E("ellipse",{cx:548,cy:334,rx:46,ry:30,fill:"rgba(180,140,255,.16)",stroke:C.lumo,"stroke-width":1.3,
+    transform:"rotate(-28 548 334)"},orb);
+
+  const vs=E("g",{},L1);
+  E("text",{x:500,y:512,fill:C.ink,"font-size":13,"text-anchor":"middle","letter-spacing":".2em",
+    text:"GEOMETRY  ·  vs ·  ELECTRONIC STRUCTURE"},vs);
+
+  L1.draw=t=>{
+    vis(L1,ramp(t,0,1.2)*(1-ramp(t,24,25.4)));
+    vis(title,ramp(t,0.4,2.4)*(1-ramp(t,20,22)));
+    mol.setAttribute("opacity",ramp(t,1.6,3.6));
+    vis(gMu,ramp(t,9.5,11));  vis(dip,ramp(t,10.4,12.4)*(1-ramp(t,15,16.4)));
+    vis(gLu,ramp(t,15.5,17)); vis(orb,ramp(t,16.4,18.4));
+    vis(vs,ramp(t,20.6,22.2));
+  };
+})();
+
+/* ═══ LAYER 2 — COST & MERGE (25–68) ═════════════════════ */
+const L2=E("g",{},svg);
+(function(){
+  const YA=140,YB=396,YM=268;     // top pipeline, bottom pipeline, merged
+  const molA=molecule(L2,146,YA,.52),molB=molecule(L2,146,YB,.52);
+  const wires=E("g",{},L2);
+  const wIn=[E("path",{fill:"none",stroke:C.mu,"stroke-width":1.6},wires),
+             E("path",{fill:"none",stroke:C.lumo,"stroke-width":1.6},wires)];
+  const wOut=[E("path",{fill:"none",stroke:C.mu,"stroke-width":1.6},wires),
+              E("path",{fill:"none",stroke:C.lumo,"stroke-width":1.6},wires)];
+
+  const encA=E("g",{},L2), encB=E("g",{},L2);
+  const rA=box(encA,0,0,196,60,"rgba(95,208,245,.55)");
+  const tA1=label(encA,20,26,"ENCODER  #1",C.mu,11.5,"start",500);
+  const tA2=label(encA,20,44,"trained only for μ",C.faint,10);
+  const rB=box(encB,0,0,196,60,"rgba(180,140,255,.55)");
+  const tB1=label(encB,20,26,"ENCODER  #2",C.lumo,11.5,"start",500);
+  const tB2=label(encB,20,44,"trained only for ε_LUMO",C.faint,10);
+
+  const shared=E("g",{},L2);
+  box(shared,258,YM-32,212,64,"rgba(234,237,247,.5)");
+  label(shared,278,YM-6,"SHARED BACKBONE",C.ink,12,"start",500);
+  label(shared,278,YM+14,"one set of parameters θ",C.faint,10);
+
+  const heads=E("g",{},L2);
+  box(heads,540,YA-26,120,52,"rgba(95,208,245,.45)");
+  label(heads,558,YA+4,"HEAD  μ",C.mu,11.5,"start",500);
+  box(heads,540,YB-26,120,52,"rgba(180,140,255,.45)");
+  label(heads,558,YB+4,"HEAD  LUMO",C.lumo,11.5,"start",500);
+  const outs=E("g",{},L2);
+  E("text",{x:706,y:YA+6,fill:C.mu,"font-size":17,text:"μ"},outs);
+  E("text",{x:706,y:YB+6,fill:C.lumo,"font-size":15,text:"ε_LUMO"},outs);
+
+  // cost meters
+  const meters=E("g",{},L2);
+  label(meters,772,86,"COST OF THIS SETUP",C.faint,10,"start",500);
+  const MET=[["TRAINING TIME",130],["PARAMETERS",210],["STORAGE",290]];
+  const bars=[],vals=[];
+  MET.forEach(m=>{
+    label(meters,772,m[1]-12,m[0],C.faint,9.5);
+    E("rect",{x:772,y:m[1],width:186,height:11,rx:2,fill:"rgba(234,237,247,.06)"},meters);
+    bars.push(E("rect",{x:772,y:m[1],width:0,height:11,rx:2,fill:C.mu},meters));
+    vals.push(E("text",{x:772,y:m[1]+30,fill:C.muted,"font-size":11.5,text:"1×"},meters));
+  });
+
+  // ×12 grid
+  const grid=E("g",{},L2), cells=[];
+  for(let i=0;i<12;i++){
+    const gx=250+(i%6)*82, gy=224+Math.floor(i/6)*74;
+    const c=E("g",{},grid);
+    E("rect",{x:gx,y:gy,width:66,height:52,rx:3,fill:"rgba(26,32,56,.9)",stroke:"rgba(255,111,97,.42)","stroke-width":1.2},c);
+    E("text",{x:gx+33,y:gy+24,fill:C.bad,"font-size":9.5,"text-anchor":"middle",text:"MODEL"},c);
+    E("text",{x:gx+33,y:gy+40,fill:C.faint,"font-size":9,"text-anchor":"middle",text:"#"+(i+1)},c);
+    cells.push(c);
+  }
+  const gridTtl=label(grid,250,196,"QM9 HAS 12+ TARGET PROPERTIES",C.bad,12,"start",500);
+
+  const verdict=E("g",{},L2);
+  E("text",{x:250,y:494,fill:C.good,"font-size":13,"letter-spacing":".14em",text:"ONE RUN  ·  ONE SET OF WEIGHTS  ·  SHARED CHEMISTRY"},verdict);
+
+  L2.draw=t=>{
+    const on=ramp(t,25,26.4)*(1-ramp(t,67,68.4));
+    vis(L2,on);
+    // phases
+    const pShow=ramp(t,25.4,27.6);          // pipelines appear
+    const pCost=ramp(t,38,41);              // meters fill to 2x
+    const pGrid=ramp(t,46.5,49)*(1-ramp(t,54,56));
+    const pMerge=ramp(t,55,60);             // encoders converge
+    const pOK=ramp(t,60,62.5);
+
+    const yA=lerp(YA,YM,pMerge), yB=lerp(YB,YM,pMerge);
+    encA.setAttribute("transform",`translate(258,${yA-30})`);
+    encB.setAttribute("transform",`translate(258,${yB-30})`);
+    molA.setAttribute("transform",`translate(146,${lerp(YA,YM-30,pMerge)}) scale(.52)`);
+    molB.setAttribute("transform",`translate(146,${lerp(YB,YM+30,pMerge)}) scale(.52)`);
+    molA.setAttribute("opacity",pShow*(1-pMerge*0.55));
+    molB.setAttribute("opacity",pShow*(1-pMerge*0.55));
+    [rA,tA1,tA2].forEach(n=>n.setAttribute("opacity",1-pMerge));
+    [rB,tB1,tB2].forEach(n=>n.setAttribute("opacity",1-pMerge));
+    vis(shared,pMerge);
+    vis(encA,pShow*(1-pGrid*.85)); vis(encB,pShow*(1-pGrid*.85));
+
+    const mA=lerp(YA,YM-28,pMerge), mB=lerp(YB,YM+28,pMerge);
+    wIn[0].setAttribute("d",`M180 ${mA} L258 ${yA}`);
+    wIn[1].setAttribute("d",`M180 ${mB} L258 ${yB}`);
+    wOut[0].setAttribute("d",`M454 ${yA} C500 ${yA} 500 ${YA} 540 ${YA}`);
+    wOut[1].setAttribute("d",`M454 ${yB} C500 ${yB} 500 ${YB} 540 ${YB}`);
+    vis(wires,pShow*(1-pGrid*.85));
+    vis(heads,ramp(t,27.4,29.4)*(1-pGrid*.85));
+    vis(outs,ramp(t,28.6,30.6)*(1-pGrid*.85));
+
+    // meters: 1× → 2× → 12× → 1×
+    let mult=1;
+    mult=lerp(1,2,pCost);
+    mult=lerp(mult,12,pGrid);
+    mult=lerp(mult,1,pMerge);
+    const frac=Math.min(mult/12,1);
+    bars.forEach((b,i)=>{
+      b.setAttribute("width",(frac*186).toFixed(1));
+      b.setAttribute("fill",mult>3?C.bad:(mult>1.4?C.amber:C.good));
+    });
+    vals.forEach(v=>{v.textContent=(mult<1.08?"1×":mult.toFixed(mult>3?0:1)+"×");
+      v.setAttribute("fill",mult>3?C.bad:(mult>1.4?C.amber:C.good));});
+    vis(meters,ramp(t,36,38.4));
+
+    vis(grid,pGrid);
+    cells.forEach((c,i)=>c.setAttribute("opacity",ramp(t,46.8+i*0.16,47.6+i*0.16)));
+    gridTtl.setAttribute("opacity",1);
+    vis(verdict,pOK);
+  };
+})();
+
+/* ═══ LAYER 3 — GRADIENTS: CONFLICT → LS → PCGRAD → AIM ══ */
+const L3=E("g",{},svg);
+(function(){
+  const CX=290,CY=300,R=132;
+  const arena=E("g",{},L3);
+  [R,R*.66,R*.33].forEach(r=>E("circle",{cx:CX,cy:CY,r:r,fill:"none",stroke:"rgba(234,237,247,.07)"},arena));
+  E("line",{x1:CX-R-24,y1:CY,x2:CX+R+24,y2:CY,stroke:"rgba(234,237,247,.07)"},arena);
+  E("line",{x1:CX,y1:CY-R-24,x2:CX,y2:CY+R+24,stroke:"rgba(234,237,247,.07)"},arena);
+  label(arena,CX-R-24,CY+R+52,"SHARED-PARAMETER SPACE",C.faint,9.5);
+
+  const vSum=E("line",{x1:CX,y1:CY,x2:CX,y2:CY,stroke:C.ink,"stroke-width":3.4,"marker-end":"url(#ar-ink)"},arena);
+  const vFix=E("line",{x1:CX,y1:CY,x2:CX,y2:CY,stroke:C.good,"stroke-width":3,"stroke-dasharray":"6 4",
+                       "marker-end":"url(#ar-good)",opacity:0},arena);
+  const vMu=E("line",{x1:CX,y1:CY,x2:CX,y2:CY,stroke:C.mu,"stroke-width":2.6,"marker-end":"url(#ar-mu)"},arena);
+  const vLu=E("line",{x1:CX,y1:CY,x2:CX,y2:CY,stroke:C.lumo,"stroke-width":2.6,"marker-end":"url(#ar-lumo)"},arena);
+  const lMu=label(arena,0,0,"g(μ)",C.mu,11.5);
+  const lLu=label(arena,0,0,"g(LUMO)",C.lumo,11.5);
+  const lSum=label(arena,0,0,"shared update",C.ink,11);
+
+  const readout=E("g",{},L3);
+  label(readout,470,120,"COSINE SIMILARITY",C.faint,9.5);
+  const cosT=E("text",{x:470,y:162,fill:C.good,"font-family":"Bricolage Grotesque, sans-serif","font-size":40,
+    "font-weight":800,text:"+0.80"},readout);
+  const cosS=label(readout,470,186,"TASKS AGREE",C.good,10.5);
+  label(readout,470,232,"USEFUL STEP RETAINED",C.faint,9.5);
+  E("rect",{x:470,y:244,width:168,height:11,rx:2,fill:"rgba(234,237,247,.06)"},readout);
+  const magB=E("rect",{x:470,y:244,width:160,height:11,rx:2,fill:C.good},readout);
+  const magT=label(readout,470,276,"96%",C.good,12);
+
+  /* right-hand explainer panels */
+  const PX=660;
+  // A: negative transfer curves
+  const pA=E("g",{},L3);
+  label(pA,PX,116,"WHAT IT COSTS YOU",C.faint,9.5,"start",500);
+  E("line",{x1:PX,y1:290,x2:PX+270,y2:290,stroke:C.faint},pA);
+  E("line",{x1:PX,y1:150,x2:PX,y2:290,stroke:C.faint},pA);
+  label(pA,PX,312,"TRAINING  →",C.faint,9);
+  label(pA,PX-6,144,"TEST ERROR",C.faint,9);
+  const curveS=E("path",{d:"M660 176 C720 214 780 236 930 244",fill:"none",stroke:C.faint,"stroke-width":2,"stroke-dasharray":"4 4"},pA);
+  const curveM=E("path",{d:"M660 176 C724 206 786 208 930 178",fill:"none",stroke:C.bad,"stroke-width":2.4},pA);
+  label(pA,846,262,"two separate models",C.faint,9.5);
+  label(pA,846,168,"shared model",C.bad,9.5);
+  label(pA,PX,352,"NEGATIVE TRANSFER",C.bad,13,"start",500);
+  label(pA,PX,374,"sharing made both properties worse",C.muted,10.5);
+
+  // B: LS
+  const pB=E("g",{},L3);
+  label(pB,PX,116,"METHOD 1 — LINEAR SCALARIZATION",C.faint,9.5,"start",500);
+  E("text",{x:PX,y:172,fill:C.ink,"font-size":20,text:"L  =  ½ ( L"},pB);
+  E("text",{x:PX+112,y:178,fill:C.mu,"font-size":13,text:"μ"},pB);
+  E("text",{x:PX+124,y:172,fill:C.ink,"font-size":20,text:"  +  L"},pB);
+  E("text",{x:PX+186,y:178,fill:C.lumo,"font-size":13,text:"LUMO"},pB);
+  E("text",{x:PX+228,y:172,fill:C.ink,"font-size":20,text:" )"},pB);
+  label(pB,PX,214,"+  one backward pass, almost free",C.good,11);
+  label(pB,PX,240,"+  strong when tasks already agree",C.good,11);
+  label(pB,PX,272,"−  no conflict handling whatsoever",C.bad,11);
+  label(pB,PX,298,"−  inherits whatever the gradients do",C.bad,11);
+
+  // C: PCGrad
+  const pC=E("g",{},L3);
+  label(pC,PX,116,"METHOD 2 — PCGRAD",C.faint,9.5,"start",500);
+  label(pC,PX,140,"if cos < 0, project the conflict out",C.muted,11);
+  E("line",{x1:PX,y1:300,x2:PX+240,y2:300,stroke:C.faint},pC);
+  E("line",{x1:PX,y1:180,x2:PX,y2:300,stroke:C.faint},pC);
+  label(pC,PX-14,184,"1",C.faint,9); label(pC,PX-14,304,"0",C.faint,9);
+  label(pC,PX-8,320,"−1",C.faint,9); label(pC,PX+108,320,"0",C.faint,9); label(pC,PX+230,320,"+1",C.faint,9);
+  label(pC,PX+40,340,"COSINE SIMILARITY",C.faint,9);
+  label(pC,PX,166,"INTERVENTION STRENGTH",C.faint,9);
+  E("path",{d:`M${PX} 186 L${PX+120} 186 L${PX+120} 300 L${PX+240} 300`,fill:"none",stroke:C.amber,"stroke-width":2.6},pC);
+  E("circle",{cx:PX+120,cy:186,r:3.6,fill:C.amber},pC);
+  label(pC,PX+134,236,"all or nothing",C.bad,10.5);
+  label(pC,PX,376,"one fixed rule for every task pair",C.bad,11);
+
+  // D: AIM
+  const pD=E("g",{},L3);
+  label(pD,PX,116,"METHOD 3 — AIM  (WHAT I TESTED)",C.faint,9.5,"start",500);
+  const eq=E("text",{x:PX,y:146,fill:C.ink,"font-size":13,text:"w"},pD);
+  E("text",{x:PX+10,y:150,fill:C.good,"font-size":10,text:"ij"},pD);
+  E("text",{x:PX+20,y:146,fill:C.ink,"font-size":13,text:" = σ ( k · ( τ"},pD);
+  E("text",{x:PX+108,y:150,fill:C.good,"font-size":10,text:"ij"},pD);
+  E("text",{x:PX+118,y:146,fill:C.ink,"font-size":13,text:" − cos( g"},pD);
+  E("text",{x:PX+184,y:150,fill:C.mu,"font-size":10,text:"i"},pD);
+  E("text",{x:PX+190,y:146,fill:C.ink,"font-size":13,text:", g"},pD);
+  E("text",{x:PX+208,y:150,fill:C.lumo,"font-size":10,text:"j"},pD);
+  E("text",{x:PX+214,y:146,fill:C.ink,"font-size":13,text:" ) ) )"},pD);
+  E("line",{x1:PX,y1:300,x2:PX+240,y2:300,stroke:C.faint},pD);
+  E("line",{x1:PX,y1:180,x2:PX,y2:300,stroke:C.faint},pD);
+  label(pD,PX-14,184,"1",C.faint,9); label(pD,PX-14,304,"0",C.faint,9);
+  label(pD,PX-8,320,"−1",C.faint,9); label(pD,PX+108,320,"0",C.faint,9); label(pD,PX+230,320,"+1",C.faint,9);
+  label(pD,PX+40,340,"COSINE SIMILARITY",C.faint,9);
+  E("path",{d:`M${PX} 186 L${PX+120} 186 L${PX+120} 300 L${PX+240} 300`,fill:"none",stroke:C.amber,
+    "stroke-width":1.4,"stroke-dasharray":"3 4",opacity:.5},pD);
+  const sigP=E("path",{d:"",fill:"none",stroke:C.good,"stroke-width":2.8},pD);
+  const tauL=E("line",{x1:PX,y1:176,x2:PX,y2:304,stroke:C.good,"stroke-width":1,"stroke-dasharray":"2 3",opacity:.55},pD);
+  const tauT=label(pD,PX,172,"τ learned",C.good,9.5);
+  // 2×2 tau matrix
+  const mtx=E("g",{},pD);
+  label(mtx,PX,378,"AIM-MATRIX  ·  ONE τ PER ORDERED PAIR",C.faint,9.5,"start",500);
+  const cellsM=[];
+  [["τ  μ ← LUMO",PX],["τ  LUMO ← μ",PX+128]].forEach((c,i)=>{
+    E("rect",{x:c[1],y:390,width:118,height:52,rx:3,fill:"rgba(95,224,168,.10)",stroke:"rgba(95,224,168,.42)"},mtx);
+    label(mtx,c[1]+12,410,c[0],C.muted,9.5);
+    cellsM.push(E("text",{x:c[1]+12,y:432,fill:C.good,"font-size":14,text:"−0.00"},mtx));
+  });
+
+  let angle=-0.5;
+  L3.draw=t=>{
+    const on=ramp(t,68,69.6)*(1-ramp(t,139,140.6));
+    vis(L3,on); if(on<0.005)return;
+
+    // angle script: aligned → conflicting → held → (aim) partially resolved
+    const A0=0.44;
+    let sep;
+    if(t<74) sep=lerp(0.5,0.7,ramp(t,69,74));
+    else if(t<86) sep=lerp(0.7,2.75,ramp(t,76,86));
+    else if(t<133) sep=2.75;
+    else sep=lerp(2.75,1.30,ramp(t,133,137.5));   // tasks stop fighting → AIM's gate eases off
+    angle=A0-sep;
+
+    const mx=CX+Math.cos(angle)*R, my=CY+Math.sin(angle)*R;
+    const ux=CX+Math.cos(A0)*R,   uy=CY+Math.sin(A0)*R;
+    vMu.setAttribute("x2",mx); vMu.setAttribute("y2",my);
+    vLu.setAttribute("x2",ux); vLu.setAttribute("y2",uy);
+    const cos=Math.cos(angle-A0);
+
+    // correction applied by the active method
+    const pcOn=ramp(t,107,109.5)*(1-ramp(t,115.5,117));
+    const aimOn=ramp(t,118,121);
+    const gate=1/(1+Math.exp(-10*(-0.15-cos)));           // AIM soft weight
+    const w=Math.max(pcOn*(cos<0?1:0), aimOn*gate);
+    let sx=(mx-CX)+(ux-CX), sy=(my-CY)+(uy-CY);
+    if(w>0.01){
+      const dot=(mx-CX)*(ux-CX)+(my-CY)*(uy-CY), nn=R*R;
+      sx-=w*(dot/nn)*(ux-CX); sy-=w*(dot/nn)*(uy-CY);
+    }
+    vSum.setAttribute("x2",CX+sx); vSum.setAttribute("y2",CY+sy);
+    const mag=Math.hypot(sx,sy)/(2*R);
+    const bad=cos<0 && w<0.25;
+    const col=bad?C.bad:(w>0.25?C.good:(cos<0.25?C.amber:C.good));
+    vSum.setAttribute("stroke",col); vSum.setAttribute("marker-end",bad?"url(#ar-bad)":(w>.25?"url(#ar-good)":"url(#ar-ink)"));
+    cosT.textContent=(cos>=0?"+":"−")+Math.abs(cos).toFixed(2); cosT.setAttribute("fill",cos<0?C.bad:(cos<.25?C.amber:C.good));
+    cosS.textContent=cos<0?"CONFLICT — UPDATES CANCEL":(cos<.25?"BARELY ALIGNED":"TASKS AGREE");
+    cosS.setAttribute("fill",cos<0?C.bad:(cos<.25?C.amber:C.good));
+    magB.setAttribute("width",Math.max(2,mag*168).toFixed(1)); magB.setAttribute("fill",col);
+    magT.textContent=Math.round(mag*100)+"%  of the step survives"; magT.setAttribute("fill",col);
+    lMu.setAttribute("x",mx+(Math.cos(angle)>0?12:-46)); lMu.setAttribute("y",my+(Math.sin(angle)>0?20:-10));
+    lLu.setAttribute("x",ux+12); lLu.setAttribute("y",uy+20);
+    lSum.setAttribute("x",CX+sx*.6-24); lSum.setAttribute("y",CY+sy*.6-14); lSum.setAttribute("fill",col);
+    vFix.setAttribute("opacity",0);
+
+    vis(readout,ramp(t,78,80));
+    vis(pA,ramp(t,88,90.5)*(1-ramp(t,97,99)));
+    curveS.setAttribute("opacity",ramp(t,89,91)); curveM.setAttribute("opacity",ramp(t,91,93.5));
+    vis(pB,ramp(t,99,101)*(1-ramp(t,104.5,106.5)));
+    vis(pC,ramp(t,106.5,108.5)*(1-ramp(t,115,117)));
+    vis(pD,ramp(t,117,119));
+
+    // AIM sigmoid, tau slides from 0 to its learned value
+    const tau=lerp(0,-0.42,ramp(t,121,128));
+    const X=c=>PX+(c+1)/2*240, Y=v=>300-v*114;
+    let d="";
+    for(let i=0;i<=120;i++){const c=-1+2*i/120;const wv=1/(1+Math.exp(-10*(tau-c)));
+      d+=(i?"L":"M")+X(c).toFixed(1)+" "+Y(wv).toFixed(1)+" ";}
+    sigP.setAttribute("d",d);
+    tauL.setAttribute("x1",X(tau)); tauL.setAttribute("x2",X(tau));
+    tauT.setAttribute("x",X(tau)-16);
+    vis(mtx,ramp(t,128,130));
+    cellsM[0].textContent=(lerp(0,-0.42,ramp(t,128.5,132))).toFixed(2);
+    cellsM[1].textContent=(lerp(0,-1.20,ramp(t,129.5,133))).toFixed(2);
+  };
+})();
+
+/* ═══ LAYER 4 — BACKBONE (140–158) ═══════════════════════ */
+const L4=E("g",{},svg);
+(function(){
+  E("text",{x:500,y:80,fill:C.ink,"font-family":"Bricolage Grotesque, sans-serif","font-size":32,"font-weight":800,
+    "text-anchor":"middle","letter-spacing":"-.02em",text:"Does the backbone already know chemistry?"},L4);
+
+  function column(x,accent,name,sub,note){
+    const g=E("g",{},L4);
+    E("rect",{x:x,y:120,width:400,height:344,rx:4,fill:"rgba(26,32,56,.5)",stroke:accent+"55","stroke-width":1.3},g);
+    E("text",{x:x+28,y:160,fill:accent,"font-size":10.5,"letter-spacing":".16em",text:name},g);
+    E("text",{x:x+28,y:196,fill:C.ink,"font-family":"Bricolage Grotesque, sans-serif","font-size":26,"font-weight":800,text:sub},g);
+    E("text",{x:x+28,y:220,fill:C.faint,"font-size":10.5,text:note},g);
+    E("line",{x1:x+28,y1:240,x2:x+372,y2:240,stroke:accent+"33"},g);
+    E("text",{x:x+28,y:266,fill:C.faint,"font-size":9.5,"letter-spacing":".14em",text:"SHARED FEATURES DURING TRAINING"},g);
+    const bars=[];
+    for(let i=0;i<12;i++) bars.push(E("rect",{x:x+28+i*29,y:300,width:20,height:40,rx:2,fill:accent+"88"},g));
+    const meterFill=E("rect",{x:x+28,y:412,width:0,height:12,rx:2,fill:accent},g);
+    E("rect",{x:x+28,y:412,width:344,height:12,rx:2,fill:"rgba(234,237,247,.06)"},g);
+    g.insertBefore(meterFill,null); // keep fill above track
+    E("text",{x:x+28,y:400,fill:C.faint,"font-size":9.5,"letter-spacing":".14em",text:"HOW MUCH THE TASKS FIGHT"},g);
+    const mt=E("text",{x:x+28,y:448,fill:accent,"font-size":11.5,text:""},g);
+    return {g,bars,meterFill,mt};
+  }
+  const left=column(70,C.bad,"BACKBONE A","MPNN from scratch","randomly initialised · learns everything at once");
+  const right=column(530,C.mu,"BACKBONE B","Uni-Mol, pretrained","~47M params · only the last 2 blocks fine-tuned");
+
+  L4.draw=t=>{
+    const on=ramp(t,140,141.6)*(1-ramp(t,157,158.6));
+    vis(L4,on); if(on<0.005)return;
+    vis(left.g,ramp(t,145,146.8)); vis(right.g,ramp(t,151,152.8));
+    const ph=t*3;
+    left.bars.forEach((b,i)=>{const h=40+Math.sin(ph+i*.9)*30+Math.sin(ph*1.7+i)*12;
+      b.setAttribute("height",Math.max(6,h)); b.setAttribute("y",340-Math.max(6,h));});
+    right.bars.forEach((b,i)=>{const h=40+Math.sin(ph*.35+i*.6)*4;
+      b.setAttribute("height",h); b.setAttribute("y",340-h);});
+    left.meterFill.setAttribute("width",(ramp(t,146,148)*292).toFixed(0));
+    right.meterFill.setAttribute("width",(ramp(t,152,154)*72).toFixed(0));
+    left.mt.textContent="HIGH — features move, gradients keep colliding";
+    right.mt.textContent="LOW — features barely drift, so little to fix";
+  };
+})();
+
+/* ═══ LAYER 5 — RESULTS (158–172) ════════════════════════ */
+const L5=E("g",{},svg);
+(function(){
+  E("text",{x:500,y:74,fill:C.ink,"font-family":"Bricolage Grotesque, sans-serif","font-size":32,"font-weight":800,
+    "text-anchor":"middle","letter-spacing":"-.02em",text:"The best method flips with the backbone"},L5);
+  E("text",{x:500,y:100,fill:C.faint,"font-size":10,"text-anchor":"middle","letter-spacing":".14em",
+    text:"MEAN CHANGE IN TEST MAE vs SINGLE-TASK  ·  MEASURED ON MY QM9 RUN (μ, U₀, U)"},L5);
+
+  const DATA={uni:[["LS",-16.39],["PCGrad",-4.01],["AIM-Scalar",-3.45],["AIM-Matrix",-0.42]],
+              gnn:[["LS",22.25],["PCGrad",26.33],["AIM-Scalar",16.73],["AIM-Matrix",2.95]]};
+  const fills=[];
+  function panel(x,key,title,accent){
+    const g=E("g",{},L5);
+    E("rect",{x:x,y:132,width:420,height:300,rx:4,fill:"rgba(26,32,56,.5)",stroke:accent+"44"},g);
+    E("circle",{cx:x+28,cy:166,r:5,fill:accent},g);
+    E("text",{x:x+42,y:170,fill:C.ink,"font-size":11.5,"letter-spacing":".14em",text:title},g);
+    const zx=x+210;
+    E("line",{x1:zx,y1:196,x2:zx,y2:404,stroke:"rgba(234,237,247,.18)","stroke-dasharray":"3 3"},g);
+    E("text",{x:x+120,y:420,fill:C.good,"font-size":9,text:"◀  BETTER THAN SINGLE-TASK"},g);
+    E("text",{x:zx+16,y:420,fill:C.bad,"font-size":9,text:"WORSE  ▶"},g);
+    DATA[key].forEach((d,i)=>{
+      const y=212+i*46;
+      E("text",{x:x+20,y:y+13,fill:C.muted,"font-size":10.5,text:d[0]},g);
+      E("rect",{x:x+96,y:y,width:228,height:18,rx:2,fill:"rgba(234,237,247,.05)"},g);
+      const good=d[1]<0, w=Math.min(Math.abs(d[1])/30,1)*114;
+      const r=E("rect",{x:good?zx:zx,y:y+2,width:0,height:14,rx:2,fill:good?C.good:C.bad},g);
+      const v=E("text",{x:x+338,y:y+13,fill:good?C.good:C.bad,"font-size":11,
+        text:(d[1]>0?"+":"")+d[1].toFixed(1)+"%"},g);
+      fills.push({r,v,w,good,zx,t0:159.5+i*0.55});
+    });
+    return g;
+  }
+  const pU=panel(40,"uni","PRETRAINED UNI-MOL",C.mu);
+  const pG=panel(540,"gnn","GNN FROM SCRATCH",C.bad);
+  const take=E("g",{},L5);
+  E("text",{x:500,y:474,fill:C.ink,"font-size":15,"text-anchor":"middle",
+    text:"Gradient intervention is a fix for unstable representations —"},take);
+  E("text",{x:500,y:500,fill:C.good,"font-size":15,"text-anchor":"middle",
+    text:"choose the optimiser and the backbone together."},take);
+  E("text",{x:500,y:528,fill:C.faint,"font-size":9.5,"text-anchor":"middle","letter-spacing":".12em",
+    text:"SINGLE SEED · 3 TARGETS · 5,000 TRAINING MOLECULES · 20 EPOCHS — INDICATIVE, NOT CONCLUSIVE"},take);
+
+  L5.draw=t=>{
+    const on=ramp(t,158,159.6);
+    vis(L5,on); if(on<0.005)return;
+    vis(pU,ramp(t,159,160.6)); vis(pG,ramp(t,164,165.6));
+    fills.forEach((f,i)=>{
+      const st=i<4?159.8+i*.5:164.8+(i-4)*.5;
+      const u=ramp(t,st,st+1.1), w=f.w*u;
+      f.r.setAttribute("width",w.toFixed(1));
+      f.r.setAttribute("x",(f.good?f.zx-w:f.zx).toFixed(1));
+      f.v.setAttribute("opacity",u);
+    });
+    vis(take,ramp(t,169,170.8));
+  };
+})();
+
+/* ═══ PLAYBACK ═══════════════════════════════════════════ */
+const LAYERS=[L1,L2,L3,L4,L5];
+const capEl=document.getElementById("caption");
+const scrub=document.getElementById("scrub");
+const tcEl=document.getElementById("tc");
+const playBtn=document.getElementById("playBtn");
+let t=0, playing=false, last=null, capIdx=-1;
+
+function fmt(s){const m=Math.floor(s/60);return m+":"+String(Math.floor(s%60)).padStart(2,"0");}
+
+const chapWrap=document.getElementById("chapters");
+const chapEls=CH.map(c=>{
+  const b=document.createElement("button");
+  b.className="chap"; b.type="button"; b.style.setProperty("--f",(c.t1-c.t0));
+  b.innerHTML='<span class="tr"><span class="fl"></span></span><span class="nm">'+c.n+'</span>';
+  b.addEventListener("click",()=>seek(c.t0+0.05));
+  chapWrap.appendChild(b); return b;
+});
+
+function setCaption(i){
+  if(i===capIdx)return; capIdx=i;
+  capEl.style.opacity=0;
+  setTimeout(()=>{capEl.innerHTML=i>=0?CAPS[i][1]:"";capEl.style.opacity=1;},reduced?0:180);
+}
+function render(){
+  LAYERS.forEach(L=>L.draw(t));
+  scrub.value=t;
+  tcEl.textContent=fmt(t)+" / "+fmt(DUR);
+  let ci=-1; for(let i=0;i<CAPS.length;i++) if(t>=CAPS[i][0]) ci=i;
+  setCaption(ci);
+  CH.forEach((c,i)=>{
+    const u=clamp((t-c.t0)/(c.t1-c.t0),0,1);
+    chapEls[i].querySelector(".fl").style.width=(u*100)+"%";
+    chapEls[i].classList.toggle("now",t>=c.t0&&t<c.t1);
+  });
+}
+function frame(ts){
+  if(playing){
+    if(last===null)last=ts;
+    t+=(ts-last)/1000; last=ts;
+    if(t>=DUR){t=DUR;pause();}
+    render();
+  } else last=null;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+function play(){if(t>=DUR)t=0;playing=true;last=null;playBtn.textContent="❚❚";}
+function pause(){playing=false;playBtn.textContent="▶";}
+function seek(v){t=clamp(v,0,DUR);capIdx=-2;render();}
+playBtn.addEventListener("click",()=>playing?pause():play());
+document.getElementById("backBtn").addEventListener("click",()=>{seek(0);play();});
+scrub.addEventListener("input",e=>seek(parseFloat(e.target.value)));
+
+/* script sheet */
+const sheet=document.getElementById("sheet"), sBody=document.getElementById("sheetBody");
+CAPS.forEach(c=>{
+  const d=document.createElement("div"); d.className="sline";
+  d.innerHTML='<div class="t">'+fmt(c[0])+'</div><div class="x">'+c[1].replace(/<[^>]+>/g,"")+'</div>';
+  d.addEventListener("click",()=>{sheet.classList.remove("open");seek(c[0]+.05);play();});
+  sBody.appendChild(d);
+});
+document.getElementById("scriptBtn").addEventListener("click",()=>{
+  sheet.classList.toggle("open");
+  document.getElementById("scriptBtn").classList.toggle("on",sheet.classList.contains("open"));
+});
+document.getElementById("closeSheet").addEventListener("click",()=>{
+  sheet.classList.remove("open");document.getElementById("scriptBtn").classList.remove("on");});
+document.getElementById("fsBtn").addEventListener("click",()=>{
+  if(document.fullscreenElement)document.exitFullscreen();
+  else document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();
+});
+addEventListener("keydown",e=>{
+  if(e.target.matches("input"))return;
+  if(e.key===" "){e.preventDefault();playing?pause():play();}
+  else if(e.key==="ArrowRight")seek(t+5);
+  else if(e.key==="ArrowLeft")seek(t-5);
+  else if(e.key==="Escape"){sheet.classList.remove("open");document.getElementById("scriptBtn").classList.remove("on");}
+});
+
+render();
+setTimeout(()=>{if(!reduced)play();},700);
+})();
+</script>
+</body>
+</html>

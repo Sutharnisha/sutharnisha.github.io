@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img">
+<defs>
+<radialGradient id="glow" cx="640" cy="200" r="520" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7fd4cb" stop-opacity=".22"/><stop offset="1" stop-color="#7fd4cb" stop-opacity="0"/></radialGradient>
+<radialGradient id="glow2" cx="120" cy="470" r="420" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#8a2f6f" stop-opacity=".45"/><stop offset="1" stop-color="#8a2f6f" stop-opacity="0"/></radialGradient>
+<linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fd4cb" stop-opacity=".45"/><stop offset="1" stop-color="#7fd4cb" stop-opacity="0"/></linearGradient>
+<marker id="aT" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#7fd4cb"/></marker>
+<marker id="aP" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#ecbcd8"/></marker>
+<marker id="aC" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#f7eff3"/></marker>
+</defs>
+<rect width="800" height="500" fill="#221020"/>
+<rect width="800" height="500" fill="url(#glow2)"/>
+<rect width="800" height="500" fill="url(#glow)"/>
+<g transform="translate(70 150) skewY(-13)">
+<rect width="190" height="210" rx="10" fill="#2d172a" stroke="#7fd4cb" stroke-opacity="0.25" stroke-width="1.5"/>
+</g>
+<g transform="translate(100 156) skewY(-13)">
+<rect width="190" height="210" rx="10" fill="#2d172a" stroke="#7fd4cb" stroke-opacity="0.42" stroke-width="1.5"/>
+</g>
+<g transform="translate(130 162) skewY(-13)">
+<rect width="190" height="210" rx="10" fill="#2d172a" stroke="#7fd4cb" stroke-opacity="0.59" stroke-width="1.5"/>
+</g>
+<g transform="translate(160 168) skewY(-13)">
+<rect width="190" height="210" rx="10" fill="#2d172a" stroke="#7fd4cb" stroke-opacity="0.76" stroke-width="1.5"/>
+</g>
+<g transform="translate(190 174) skewY(-13)">
+<rect width="190" height="210" rx="10" fill="#2d172a" stroke="#7fd4cb" stroke-opacity="0.93" stroke-width="1.5"/>
+<circle cx="57" cy="112" r="11" fill="#7fd4cb" fill-opacity="0.59"/>
+<circle cx="57" cy="112" r="3.1" fill="#f7eff3" fill-opacity=".85"/>
+<circle cx="32" cy="24" r="18" fill="#ecbcd8" fill-opacity="0.38"/>
+<circle cx="32" cy="24" r="5.0" fill="#f7eff3" fill-opacity=".85"/>
+<circle cx="167" cy="100" r="18" fill="#7fd4cb" fill-opacity="0.60"/>
+<circle cx="167" cy="100" r="5.0" fill="#f7eff3" fill-opacity=".85"/>
+<circle cx="44" cy="127" r="18" fill="#7fd4cb" fill-opacity="0.66"/>
+<circle cx="44" cy="127" r="5.1" fill="#f7eff3" fill-opacity=".85"/>
+<circle cx="120" cy="33" r="17" fill="#7fd4cb" fill-opacity="0.42"/>
+<circle cx="120" cy="33" r="4.7" fill="#f7eff3" fill-opacity=".85"/>
+<circle cx="27" cy="166" r="13" fill="#7fd4cb" fill-opacity="0.73"/>
+<circle cx="27" cy="166" r="3.5" fill="#f7eff3" fill-opacity=".85"/>
+<circle cx="126" cy="175" r="12" fill="#7fd4cb" fill-opacity="0.49"/>
+<circle cx="126" cy="175" r="3.2" fill="#f7eff3" fill-opacity=".85"/>
+<circle cx="159" cy="168" r="7" fill="#ecbcd8" fill-opacity="0.37"/>
+<circle cx="159" cy="168" r="2.1" fill="#f7eff3" fill-opacity=".85"/>
+<circle cx="163" cy="94" r="15" fill="#ecbcd8" fill-opacity="0.53"/>
+<circle cx="163" cy="94" r="4.1" fill="#f7eff3" fill-opacity=".85"/>
+<circle cx="78" cy="80" r="14" fill="#7fd4cb" fill-opacity="0.75"/>
+<circle cx="78" cy="80" r="4.0" fill="#f7eff3" fill-opacity=".85"/>
+<circle cx="122" cy="176" r="18" fill="#7fd4cb" fill-opacity="0.62"/>
+<circle cx="122" cy="176" r="5.0" fill="#f7eff3" fill-opacity=".85"/>
+<circle cx="46" cy="165" r="20" fill="#7fd4cb" fill-opacity="0.56"/>
+<circle cx="46" cy="165" r="5.5" fill="#f7eff3" fill-opacity=".85"/>
+<circle cx="126" cy="57" r="18" fill="#7fd4cb" fill-opacity="0.41"/>
+<circle cx="126" cy="57" r="4.9" fill="#f7eff3" fill-opacity=".85"/>
+<circle cx="31" cy="164" r="20" fill="#ecbcd8" fill-opacity="0.69"/>
+<circle cx="31" cy="164" r="5.6" fill="#f7eff3" fill-opacity=".85"/>
+<circle cx="82" cy="47" r="10" fill="#7fd4cb" fill-opacity="0.73"/>
+<circle cx="82" cy="47" r="2.8" fill="#f7eff3" fill-opacity=".85"/>
+<circle cx="28" cy="124" r="7" fill="#7fd4cb" fill-opacity="0.43"/>
+<circle cx="28" cy="124" r="1.9" fill="#f7eff3" fill-opacity=".85"/>
+</g>
+<path d="M408 268H470" stroke="#f7eff3" stroke-width="2.5" stroke-dasharray="6 7" stroke-linecap="round" marker-end="url(#aC)"/>
+<rect x="496" y="126" width="252" height="290" rx="14" fill="#2d172a" stroke="#4a2c44" stroke-width="1.5"/>
+<circle cx="518" cy="148" r="5" fill="#ecbcd8" fill-opacity=".8"/>
+<circle cx="535" cy="148" r="5" fill="#7fd4cb" fill-opacity=".8"/>
+<circle cx="552" cy="148" r="5" fill="#f7eff3" fill-opacity=".8"/>
+<path d="M496 170H748" stroke="#4a2c44"/>
+<rect x="520" y="346" width="16" height="42" rx="3" fill="#7fd4cb" fill-opacity="0.35"/>
+<rect x="546" y="328" width="16" height="60" rx="3" fill="#7fd4cb" fill-opacity="0.43"/>
+<rect x="572" y="334" width="16" height="54" rx="3" fill="#7fd4cb" fill-opacity="0.51"/>
+<rect x="598" y="300" width="16" height="88" rx="3" fill="#7fd4cb" fill-opacity="0.59"/>
+<rect x="624" y="284" width="16" height="104" rx="3" fill="#7fd4cb" fill-opacity="0.67"/>
+<rect x="650" y="292" width="16" height="96" rx="3" fill="#7fd4cb" fill-opacity="0.75"/>
+<rect x="676" y="250" width="16" height="138" rx="3" fill="#7fd4cb" fill-opacity="0.83"/>
+<rect x="702" y="224" width="16" height="164" rx="3" fill="#7fd4cb" fill-opacity="0.91"/>
+<path d="M528 330 L554 312 L580 318 L606 284 L632 268 L658 276 L684 234 L710 208" fill="none" stroke="#ecbcd8" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="528" cy="330" r="3.5" fill="#ecbcd8"/>
+<circle cx="554" cy="312" r="3.5" fill="#ecbcd8"/>
+<circle cx="580" cy="318" r="3.5" fill="#ecbcd8"/>
+<circle cx="606" cy="284" r="3.5" fill="#ecbcd8"/>
+<circle cx="632" cy="268" r="3.5" fill="#ecbcd8"/>
+<circle cx="658" cy="276" r="3.5" fill="#ecbcd8"/>
+<circle cx="684" cy="234" r="3.5" fill="#ecbcd8"/>
+<circle cx="710" cy="208" r="3.5" fill="#ecbcd8"/>
+<text x="60" y="78" font-family="'JetBrains Mono',ui-monospace,Consolas,monospace" font-size="13" letter-spacing="2" fill="#f7eff3" fill-opacity=".7">IMAGE STACK → REPRODUCIBLE REPORT</text>
+</svg>

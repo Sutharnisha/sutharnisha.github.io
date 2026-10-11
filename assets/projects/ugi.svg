@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img">
+<defs>
+<radialGradient id="glow" cx="600" cy="260" r="520" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ecbcd8" stop-opacity=".22"/><stop offset="1" stop-color="#ecbcd8" stop-opacity="0"/></radialGradient>
+<radialGradient id="glow2" cx="120" cy="470" r="420" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#8a2f6f" stop-opacity=".45"/><stop offset="1" stop-color="#8a2f6f" stop-opacity="0"/></radialGradient>
+<linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fd4cb" stop-opacity=".45"/><stop offset="1" stop-color="#7fd4cb" stop-opacity="0"/></linearGradient>
+<marker id="aT" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#7fd4cb"/></marker>
+<marker id="aP" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#ecbcd8"/></marker>
+<marker id="aC" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#f7eff3"/></marker>
+</defs>
+<rect width="800" height="500" fill="#221020"/>
+<rect width="800" height="500" fill="url(#glow2)"/>
+<rect width="800" height="500" fill="url(#glow)"/>
+<path d="M164 104 C290 104 300 250 404 250" fill="none" stroke="#7fd4cb" stroke-opacity=".55" stroke-width="2"/>
+<path d="M164 202 C290 202 300 250 404 250" fill="none" stroke="#ecbcd8" stroke-opacity=".55" stroke-width="2"/>
+<path d="M164 300 C290 300 300 250 404 250" fill="none" stroke="#f7eff3" stroke-opacity=".55" stroke-width="2"/>
+<path d="M164 398 C290 398 300 250 404 250" fill="none" stroke="#7fd4cb" stroke-opacity=".55" stroke-width="2"/>
+<rect x="72" y="81" width="92" height="46" rx="23" fill="#2d172a" stroke="#7fd4cb" stroke-width="2"/>
+<text x="118" y="110" text-anchor="middle" font-family="'JetBrains Mono',ui-monospace,Consolas,monospace" font-size="16" font-weight="700" fill="#7fd4cb">NH₂</text>
+<rect x="72" y="179" width="92" height="46" rx="23" fill="#2d172a" stroke="#ecbcd8" stroke-width="2"/>
+<text x="118" y="208" text-anchor="middle" font-family="'JetBrains Mono',ui-monospace,Consolas,monospace" font-size="16" font-weight="700" fill="#ecbcd8">C=O</text>
+<rect x="72" y="277" width="92" height="46" rx="23" fill="#2d172a" stroke="#f7eff3" stroke-width="2"/>
+<text x="118" y="306" text-anchor="middle" font-family="'JetBrains Mono',ui-monospace,Consolas,monospace" font-size="16" font-weight="700" fill="#f7eff3">COOH</text>
+<rect x="72" y="375" width="92" height="46" rx="23" fill="#2d172a" stroke="#7fd4cb" stroke-width="2"/>
+<text x="118" y="404" text-anchor="middle" font-family="'JetBrains Mono',ui-monospace,Consolas,monospace" font-size="16" font-weight="700" fill="#7fd4cb">N≡C</text>
+<circle cx="404" cy="250" r="26" fill="#2d172a" stroke="#f7eff3" stroke-width="2"/>
+<text x="404" y="256" text-anchor="middle" font-family="'JetBrains Mono',ui-monospace,Consolas,monospace" font-size="15" font-weight="700" fill="#f7eff3">4→1</text>
+<path d="M434 250H478" stroke="#f7eff3" stroke-width="2.5" stroke-linecap="round" marker-end="url(#aC)"/>
+<path d="M560.0 254.0 L599.8 277.0 L599.8 323.0 L560.0 346.0 L520.2 323.0 L520.2 277.0Z" fill="none" stroke="#f7eff3" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="560" cy="300" r="26" fill="none" stroke="#f7eff3" stroke-width="2" stroke-opacity=".6"/>
+<path d="M599.8 277.0 L640.0 232.0 L680.0 255.0 L720.0 232.0 L752.0 250.0" fill="none" stroke="#f7eff3" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M640 232V186M634 232V186" stroke="#ecbcd8" stroke-width="3" stroke-linecap="round"/>
+<path d="M720 232V190" stroke="#f7eff3" stroke-width="3" stroke-linecap="round"/>
+<path d="M680 255V300L716 322" fill="none" stroke="#f7eff3" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M674 300 644 322M680 306 650 328" stroke="#ecbcd8" stroke-width="3" stroke-linecap="round"/>
+<circle cx="637" cy="166" r="15" fill="#221020"/>
+<text x="637" y="172" text-anchor="middle" font-family="'JetBrains Mono',ui-monospace,Consolas,monospace" font-size="17" font-weight="700" fill="#ecbcd8">O</text>
+<circle cx="680" cy="256" r="15" fill="#221020"/>
+<text x="680" y="262" text-anchor="middle" font-family="'JetBrains Mono',ui-monospace,Consolas,monospace" font-size="17" font-weight="700" fill="#7fd4cb">N</text>
+<circle cx="720" cy="172" r="15" fill="#221020"/>
+<text x="720" y="178" text-anchor="middle" font-family="'JetBrains Mono',ui-monospace,Consolas,monospace" font-size="17" font-weight="700" fill="#f7eff3">R</text>
+<circle cx="634" cy="336" r="15" fill="#221020"/>
+<text x="634" y="342" text-anchor="middle" font-family="'JetBrains Mono',ui-monospace,Consolas,monospace" font-size="17" font-weight="700" fill="#ecbcd8">O</text>
+<circle cx="728" cy="328" r="15" fill="#221020"/>
+<text x="728" y="334" text-anchor="middle" font-family="'JetBrains Mono',ui-monospace,Consolas,monospace" font-size="17" font-weight="700" fill="#7fd4cb">NH</text>
+<text x="72" y="56" font-family="'JetBrains Mono',ui-monospace,Consolas,monospace" font-size="13" letter-spacing="2" fill="#f7eff3" fill-opacity=".7">FOUR COMPONENTS, ONE POT</text>
+</svg>
